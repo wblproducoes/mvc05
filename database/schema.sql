@@ -205,6 +205,20 @@ CREATE TABLE IF NOT EXISTS `{prefix}school_schedules` (
 
 -- --------------------------------------------------------
 
+-- Tabela de Logs do Sistema
+CREATE TABLE IF NOT EXISTS `{prefix}system_logs` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `level` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
+    `context` json DEFAULT NULL,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_system_logs_level` (`level`),
+    KEY `idx_system_logs_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
 -- Inserir matérias escolares padrão
 INSERT INTO `{prefix}school_subjects` (`name`, `translate`, `description`) VALUES
 ('portuguese', 'Português', 'Língua Portuguesa'),
