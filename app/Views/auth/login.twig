@@ -1,0 +1,145 @@
+{% extends "layout/base.twig" %}
+
+{% block title %}Login - {{ app_name }}{% endblock %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+<div class="container-fluid vh-100">
+    <div class="row h-100">
+        <div class="col-md-6 d-none d-md-flex align-items-center justify-content-center bg-primary">
+            <div class="text-center text-white">
+                <h1 class="display-4 mb-4">{{ app_name }}</h1>
+                <p class="lead">Sistema administrativo completo com arquitetura MVC</p>
+                <div class="mt-4">
+                    <i class="bi bi-shield-check display-1"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+            <div class="card shadow-lg" style="width: 100%; max-width: 400px;">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="card-title">Entrar</h2>
+                        <p class="text-muted">Acesse sua conta</p>
+                    </div>
+
+                    <!-- Flash Messages -->
+                    {% if flash_messages %}
+                        {% for message in flash_messages %}
+                            <div class="alert alert-{{ message.type }} alert-dismissible fade show" role="alert">
+                                {{ message.message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" action="/login">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-envelope"></i>
+                                </span>
+                                <input type="email" 
+                                       class="form-control {% if errors.email %}is-invalid{% endif %}" 
+                                       id="email" 
+                                       name="email" 
+                                       value="{{ old.email ?? '' }}" 
+                                       required 
+                                       autofocus>
+                                {% if errors.email %}
+                                    <div class="invalid-feedback">
+                                        {{ errors.email[0] }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Senha</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <input type="password" 
+                                       class="form-control {% if errors.password %}is-invalid{% endif %}" 
+                                       id="password" 
+                                       name="password" 
+                                       required>
+                                {% if errors.password %}
+                                    <div class="invalid-feedback">
+                                        {{ errors.password[0] }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                            <label class="form-check-label" for="remember">
+                                Lembrar de mim
+                            </label>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Entrar
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <a href="/forgot-password" class="text-decoration-none">
+                            Esqueceu sua senha?
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.auth-page {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
+}
+
+.form-control {
+    border-left: none;
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #0d6efd, #6610f2);
+    border: none;
+    border-radius: 10px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #0b5ed7, #5a0fc8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+</style>
+{% endblock %}

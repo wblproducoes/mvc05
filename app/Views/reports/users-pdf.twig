@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Usuários</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #0d6efd;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .info-section {
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .info-row {
+            margin-bottom: 5px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 120px;
+        }
+        
+        .stats-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .stats-item {
+            display: table-cell;
+            text-align: center;
+            padding: 10px;
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stats-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        
+        .stats-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        td {
+            font-size: 11px;
+        }
+        
+        .badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-primary {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #dee2e6;
+            padding-top: 10px;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ app_name }}</h1>
+        <div class="subtitle">Relatório de Usuários</div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-row">
+            <span class="info-label">Gerado em:</span>
+            {{ generated_at }}
+        </div>
+        <div class="info-row">
+            <span class="info-label">Gerado por:</span>
+            {{ generated_by }}
+        </div>
+        {% if filters %}
+            <div class="info-row">
+                <span class="info-label">Filtros:</span>
+                {% for key, value in filters %}
+                    {{ key|title }}: {{ value }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="stats-grid">
+        <div class="stats-item">
+            <div class="stats-number">{{ stats.total }}</div>
+            <div class="stats-label">Total</div>
+        </div>
+        <div class="stats-item">
+            <div class="stats-number">{{ stats.active }}</div>
+            <div class="stats-label">Ativos</div>
+        </div>
+        <div class="stats-item">
+            <div class="stats-number">{{ stats.inactive }}</div>
+            <div class="stats-label">Inativos</div>
+        </div>
+        <div class="stats-item">
+            <div class="stats-number">{{ stats.admins }}</div>
+            <div class="stats-label">Admins</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Papel</th>
+                <th>Status</th>
+                <th>Cadastro</th>
+                <th>Último Login</th>
+                <th>Logins</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <span class="badge badge-{{ user.role == 'admin' ? 'danger' : 'primary' }}">
+                            {{ user.role == 'admin' ? 'Admin' : 'Usuário' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ user.active ? 'success' : 'danger' }}">
+                            {{ user.active ? 'Ativo' : 'Inativo' }}
+                        </span>
+                    </td>
+                    <td>{{ user.created_at|date('d/m/Y') }}</td>
+                    <td>{{ user.last_login ? user.last_login|date('d/m/Y H:i') : 'Nunca' }}</td>
+                    <td>{{ user.login_count }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>{{ app_name }} - Relatório gerado automaticamente em {{ generated_at }}</p>
+        <p>Total de {{ users|length }} usuário(s) listado(s)</p>
+    </div>
+</body>
+</html>

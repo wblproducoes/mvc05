@@ -1,0 +1,185 @@
+{% extends "layout/base.twig" %}
+
+{% block body_class %}admin-layout{% endblock %}
+
+{% block content %}
+<div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>{{ app_name }}</h3>
+        </div>
+
+        <ul class="list-unstyled components">
+            <li class="nav-item">
+                <a href="/dashboard" class="nav-link">
+                    <i class="bi bi-speedometer2"></i>
+                    Dashboard
+                </a>
+            </li>
+            
+            {% if user and user.role == 'admin' %}
+            <li class="nav-item">
+                <a href="/users" class="nav-link">
+                    <i class="bi bi-people"></i>
+                    Usuários
+                </a>
+            </li>
+            {% endif %}
+            
+            <li class="nav-item">
+                <a href="/reports" class="nav-link">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Relatórios
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-bs-toggle="collapse" data-bs-target="#settingsSubmenu">
+                    <i class="bi bi-gear"></i>
+                    Configurações
+                    <i class="bi bi-chevron-down ms-auto"></i>
+                </a>
+                <div class="collapse" id="settingsSubmenu">
+                    <ul class="list-unstyled ps-3">
+                        <li><a href="/profile" class="nav-link">Perfil</a></li>
+                        <li><a href="/settings" class="nav-link">Sistema</a></li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Page Content -->
+    <div id="content" class="content">
+        <!-- Top Navigation -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <button type="button" id="sidebarCollapse" class="btn btn-outline-secondary">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <div class="navbar-nav ms-auto">
+                    <!-- Flash Messages -->
+                    {% if flash_messages %}
+                        {% for message in flash_messages %}
+                            <div class="alert alert-{{ message.type }} alert-dismissible fade show" role="alert">
+                                {{ message.message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- User Dropdown -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            {{ user ? user.name : 'Usuário' }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile">
+                                <i class="bi bi-person"></i> Perfil
+                            </a></li>
+                            <li><a class="dropdown-item" href="/settings">
+                                <i class="bi bi-gear"></i> Configurações
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="bi bi-box-arrow-right"></i> Sair
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container-fluid">
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.wrapper {
+    display: flex;
+    width: 100%;
+    align-items: stretch;
+}
+
+.sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    background: #343a40;
+    color: #fff;
+    transition: all 0.3s;
+    min-height: 100vh;
+}
+
+.sidebar.active {
+    margin-left: -250px;
+}
+
+.sidebar-header {
+    padding: 20px;
+    background: #495057;
+}
+
+.sidebar ul.components {
+    padding: 20px 0;
+}
+
+.sidebar ul li a {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    display: block;
+    color: #fff;
+    text-decoration: none;
+}
+
+.sidebar ul li a:hover {
+    color: #fff;
+    background: #495057;
+}
+
+.content {
+    width: 100%;
+    padding: 0;
+    min-height: 100vh;
+    transition: all 0.3s;
+}
+
+#sidebarCollapse {
+    width: 40px;
+    height: 40px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        margin-left: -250px;
+    }
+    .sidebar.active {
+        margin-left: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarCollapse = document.getElementById('sidebarCollapse');
+    const sidebar = document.getElementById('sidebar');
+    
+    if (sidebarCollapse && sidebar) {
+        sidebarCollapse.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+    }
+});
+</script>
+{% endblock %}

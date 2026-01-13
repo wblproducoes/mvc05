@@ -1,0 +1,77 @@
+{
+    "name": "Sistema Administrativo MVC",
+    "version": "1.0.0",
+    "description": "Sistema administrativo completo desenvolvido em PHP com arquitetura MVC",
+    "homepage": "https://github.com/seu-usuario/sistema-administrativo-mvc",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sistema Administrativo",
+            "email": "admin@sistema.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/seu-usuario/sistema-administrativo-mvc/issues",
+        "source": "https://github.com/seu-usuario/sistema-administrativo-mvc"
+    },
+    "requirements": {
+        "php": ">=8.4.0",
+        "mysql": ">=5.7.0",
+        "extensions": [
+            "pdo",
+            "pdo_mysql",
+            "openssl",
+            "curl",
+            "gd",
+            "mbstring",
+            "json",
+            "xml"
+        ]
+    },
+    "features": [
+        "Arquitetura MVC profissional",
+        "Sistema de autenticação seguro",
+        "Proteção CSRF",
+        "Senhas criptografadas (bcrypt)",
+        "Geração de relatórios em PDF",
+        "Interface responsiva (Bootstrap 5.3)",
+        "Sistema de instalação protegido",
+        "Validação de dados robusta",
+        "Prepared Statements (PDO)",
+        "Flash messages",
+        "Middleware de autenticação"
+    ],
+    "changelog": {
+        "1.0.0": {
+            "date": "2025-01-13",
+            "changes": [
+                "Lançamento inicial do sistema",
+                "Implementação completa da arquitetura MVC",
+                "Sistema de autenticação e autorização",
+                "Dashboard administrativo com estatísticas",
+                "Gerenciamento completo de usuários",
+                "Sistema de relatórios com exportação PDF",
+                "Interface moderna e responsiva",
+                "Sistema de instalação automatizado",
+                "Documentação completa"
+            ]
+        }
+    },
+    "roadmap": {
+        "1.1.0": [
+            "Sistema de notificações",
+            "API REST",
+            "Autenticação de dois fatores (2FA)"
+        ],
+        "1.2.0": [
+            "Sistema de backup automático",
+            "Permissões granulares",
+            "Dashboard customizável"
+        ],
+        "2.0.0": [
+            "Refatoração para PHP 8.5+",
+            "Microserviços",
+            "Interface SPA (Single Page Application)"
+        ]
+    }
+}

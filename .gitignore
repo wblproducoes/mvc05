@@ -1,9 +1,32 @@
-/vendor/
+# Environment files
 .env
-*.log
-/cache/*
-!cache/.gitkeep
+
+# Composer
+/vendor/
+composer.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
 Thumbs.db
-.ftpquota
-.pdf
+
+# Logs
+/logs/*.log
+/storage/logs/*.log
+
+# Cache
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# Uploads
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Temporary files
+/tmp/*
+!/tmp/.gitkeep

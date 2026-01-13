@@ -1,0 +1,85 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: pdo, pdo_mysql, mbstring, openssl, curl, gd
+        
+    - name: Validate composer.json
+      run: composer validate --strict
+      
+    - name: Install dependencies
+      run: composer install --no-dev --optimize-autoloader
+      
+    - name: Create release archive
+      run: |
+        zip -r sistema-administrativo-mvc-${{ github.ref_name }}.zip . \
+          -x "*.git*" "node_modules/*" "tests/*" ".github/*" "*.md" \
+          "phpunit.xml" ".phpunit.result.cache"
+          
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Sistema Administrativo MVC v${{ steps.version.outputs.VERSION }}
+        body: |
+          ## Sistema Administrativo MVC v${{ steps.version.outputs.VERSION }}
+          
+          ### 📦 Instalação
+          
+          1. Baixe o arquivo `sistema-administrativo-mvc-${{ steps.version.outputs.VERSION }}.zip`
+          2. Extraia em seu servidor web
+          3. Execute `composer install` (se não incluído)
+          4. Configure o arquivo `.env`
+          5. Acesse `/install` para configurar o sistema
+          
+          ### 📋 Requisitos
+          
+          - PHP 8.4+
+          - MySQL 5.7+ ou MariaDB 10.2+
+          - Extensões: PDO, PDO_MySQL, OpenSSL, cURL, GD, Mbstring
+          
+          ### 🔗 Links
+          
+          - [Documentação](https://github.com/${{ github.repository }}/blob/main/README.md)
+          - [Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+          - [Issues](https://github.com/${{ github.repository }}/issues)
+          
+          ---
+          
+          **Checksum SHA256:**
+          ```
+          $(sha256sum sistema-administrativo-mvc-${{ steps.version.outputs.VERSION }}.zip | cut -d' ' -f1)
+          ```
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./sistema-administrativo-mvc-${{ github.ref_name }}.zip
+        asset_name: sistema-administrativo-mvc-${{ steps.version.outputs.VERSION }}.zip
+        asset_content_type: application/zip
