@@ -24,22 +24,32 @@ class User extends Model
      */
     protected array $fillable = [
         'name',
+        'alias',
         'email',
-        'password',
-        'level_id',
-        'gender_id',
-        'status_id',
-        'avatar',
-        'phone',
+        'cpf',
         'birth_date',
-        'document',
-        'address',
-        'city',
-        'state',
-        'zip_code',
-        'last_login',
-        'login_count',
-        'notes'
+        'gender_id',
+        'phone_home',
+        'phone_mobile',
+        'phone_message',
+        'photo',
+        'username',
+        'password',
+        'google_access_token',
+        'google_refresh_token',
+        'google_token_expires',
+        'google_calendar_id',
+        'message_signature',
+        'signature_include_logo',
+        'permissions_updated_at',
+        'unique_code',
+        'session_token',
+        'last_access',
+        'password_reset_token',
+        'password_reset_expires',
+        'level_id',
+        'status_id',
+        'register_id'
     ];
 
     /**
@@ -47,8 +57,16 @@ class User extends Model
      */
     protected array $hidden = [
         'password',
-        'remember_token'
+        'google_access_token',
+        'google_refresh_token',
+        'session_token',
+        'password_reset_token'
     ];
+
+    /**
+     * @var array Campos de data que devem ser convertidos
+     */
+    protected array $dates = ['dh', 'dh_update', 'deleted_at', 'birth_date', 'last_access', 'google_token_expires', 'password_reset_expires', 'permissions_updated_at'];
 
     /**
      * Cria um novo usuário
@@ -63,10 +81,36 @@ class User extends Model
             $data['password'] = Security::hashPassword($data['password']);
         }
 
+        // Gerar código único se não fornecido
+        if (!isset($data['unique_code'])) {
+            $data['unique_code'] = $this->generateUniqueCode();
+        }
+
+        // Gerar username se não fornecido
+        if (!isset($data['username'])) {
+            $data['username'] = $this->generateUsername($data['name']);
+        }
+
         // Definir valores padrão
         $data['status_id'] = $data['status_id'] ?? 1; // Ativo
         $data['level_id'] = $data['level_id'] ?? 11; // Usuário comum
-        $data['login_count'] = 0;
+        $data['signature_include_logo'] = $data['signature_include_logo'] ?? false;
+
+        // Formatar CPF
+        if (isset($data['cpf'])) {
+            $data['cpf'] = $this->formatCpf($data['cpf']);
+        }
+
+        // Formatar telefones
+        if (isset($data['phone_home'])) {
+            $data['phone_home'] = $this->formatPhone($data['phone_home']);
+        }
+        if (isset($data['phone_mobile'])) {
+            $data['phone_mobile'] = $this->formatPhone($data['phone_mobile']);
+        }
+        if (isset($data['phone_message'])) {
+            $data['phone_message'] = $this->formatPhone($data['phone_message']);
+        }
 
         return parent::create($data);
     }
@@ -86,6 +130,22 @@ class User extends Model
         } else {
             // Remove senha vazia para não sobrescrever
             unset($data['password']);
+        }
+
+        // Formatar CPF se fornecido
+        if (isset($data['cpf'])) {
+            $data['cpf'] = $this->formatCpf($data['cpf']);
+        }
+
+        // Formatar telefones se fornecidos
+        if (isset($data['phone_home'])) {
+            $data['phone_home'] = $this->formatPhone($data['phone_home']);
+        }
+        if (isset($data['phone_mobile'])) {
+            $data['phone_mobile'] = $this->formatPhone($data['phone_mobile']);
+        }
+        if (isset($data['phone_message'])) {
+            $data['phone_message'] = $this->formatPhone($data['phone_message']);
         }
 
         return parent::update($id, $data);
@@ -451,5 +511,313 @@ class User extends Model
                 ORDER BY u.deleted_at DESC";
         
         return $this->database->select($sql);
+    }
+
+    /**
+     * Busca usuário por username
+     * 
+     * @param string $username
+     * @return array|null
+     */
+    public function findByUsername(string $username): ?array
+    {
+        return $this->whereFirst(['username' => $username, 'deleted_at' => null]);
+    }
+
+    /**
+     * Busca usuário por CPF
+     * 
+     * @param string $cpf
+     * @return array|null
+     */
+    public function findByCpf(string $cpf): ?array
+    {
+        $cpf = $this->formatCpf($cpf);
+        return $this->whereFirst(['cpf' => $cpf, 'deleted_at' => null]);
+    }
+
+    /**
+     * Busca usuário por código único
+     * 
+     * @param string $uniqueCode
+     * @return array|null
+     */
+    public function findByUniqueCode(string $uniqueCode): ?array
+    {
+        return $this->whereFirst(['unique_code' => $uniqueCode, 'deleted_at' => null]);
+    }
+
+    /**
+     * Gera código único
+     * 
+     * @return string
+     */
+    public function generateUniqueCode(): string
+    {
+        do {
+            $code = strtoupper(Security::generateRandomString(8));
+        } while ($this->findByUniqueCode($code));
+        
+        return $code;
+    }
+
+    /**
+     * Gera username único baseado no nome
+     * 
+     * @param string $name
+     * @return string
+     */
+    public function generateUsername(string $name): string
+    {
+        // Remover acentos e caracteres especiais
+        $username = $this->removeAccents(strtolower($name));
+        $username = preg_replace('/[^a-z0-9]/', '', $username);
+        $username = substr($username, 0, 15);
+        
+        // Verificar se já existe
+        $originalUsername = $username;
+        $counter = 1;
+        
+        while ($this->findByUsername($username)) {
+            $username = $originalUsername . $counter;
+            $counter++;
+            
+            // Limitar tamanho
+            if (strlen($username) > 20) {
+                $username = substr($originalUsername, 0, 17) . $counter;
+            }
+        }
+        
+        return $username;
+    }
+
+    /**
+     * Remove acentos de uma string
+     * 
+     * @param string $string
+     * @return string
+     */
+    private function removeAccents(string $string): string
+    {
+        $accents = [
+            'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'ä' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'õ' => 'o', 'ô' => 'o', 'ö' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c', 'ñ' => 'n'
+        ];
+        
+        return strtr($string, $accents);
+    }
+
+    /**
+     * Formata CPF
+     * 
+     * @param string $cpf
+     * @return string
+     */
+    public function formatCpf(string $cpf): string
+    {
+        $cpf = preg_replace('/\D/', '', $cpf);
+        
+        if (strlen($cpf) === 11) {
+            return substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
+        }
+        
+        return $cpf;
+    }
+
+    /**
+     * Formata telefone
+     * 
+     * @param string $phone
+     * @return string
+     */
+    public function formatPhone(string $phone): string
+    {
+        $phone = preg_replace('/\D/', '', $phone);
+        
+        if (strlen($phone) === 11) {
+            return '(' . substr($phone, 0, 2) . ') ' . substr($phone, 2, 5) . '-' . substr($phone, 7);
+        } elseif (strlen($phone) === 10) {
+            return '(' . substr($phone, 0, 2) . ') ' . substr($phone, 2, 4) . '-' . substr($phone, 6);
+        }
+        
+        return $phone;
+    }
+
+    /**
+     * Valida CPF
+     * 
+     * @param string $cpf
+     * @return bool
+     */
+    public function validateCpf(string $cpf): bool
+    {
+        $cpf = preg_replace('/\D/', '', $cpf);
+        
+        if (strlen($cpf) !== 11 || preg_match('/(\d)\1{10}/', $cpf)) {
+            return false;
+        }
+        
+        for ($t = 9; $t < 11; $t++) {
+            for ($d = 0, $c = 0; $c < $t; $c++) {
+                $d += $cpf[$c] * (($t + 1) - $c);
+            }
+            $d = ((10 * $d) % 11) % 10;
+            if ($cpf[$c] != $d) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Verifica se CPF já existe
+     * 
+     * @param string $cpf
+     * @param int|null $excludeId
+     * @return bool
+     */
+    public function cpfExists(string $cpf, ?int $excludeId = null): bool
+    {
+        $cpf = $this->formatCpf($cpf);
+        
+        if ($excludeId) {
+            $sql = "SELECT COUNT(*) as count FROM {$this->table} 
+                    WHERE cpf = :cpf AND deleted_at IS NULL AND id != :id";
+            $result = $this->database->selectOne($sql, ['cpf' => $cpf, 'id' => $excludeId]);
+        } else {
+            $sql = "SELECT COUNT(*) as count FROM {$this->table} 
+                    WHERE cpf = :cpf AND deleted_at IS NULL";
+            $result = $this->database->selectOne($sql, ['cpf' => $cpf]);
+        }
+        
+        return $result['count'] > 0;
+    }
+
+    /**
+     * Verifica se username já existe
+     * 
+     * @param string $username
+     * @param int|null $excludeId
+     * @return bool
+     */
+    public function usernameExists(string $username, ?int $excludeId = null): bool
+    {
+        if ($excludeId) {
+            $sql = "SELECT COUNT(*) as count FROM {$this->table} 
+                    WHERE username = :username AND deleted_at IS NULL AND id != :id";
+            $result = $this->database->selectOne($sql, ['username' => $username, 'id' => $excludeId]);
+        } else {
+            $sql = "SELECT COUNT(*) as count FROM {$this->table} 
+                    WHERE username = :username AND deleted_at IS NULL";
+            $result = $this->database->selectOne($sql, ['username' => $username]);
+        }
+        
+        return $result['count'] > 0;
+    }
+
+    /**
+     * Atualiza último acesso
+     * 
+     * @param int $id
+     * @return int
+     */
+    public function updateLastAccess(int $id): int
+    {
+        return $this->update($id, [
+            'last_access' => date('Y-m-d H:i:s'),
+            'session_token' => Security::generateRandomString(64)
+        ]);
+    }
+
+    /**
+     * Gera token de reset de senha
+     * 
+     * @param int $id
+     * @return string
+     */
+    public function generatePasswordResetToken(int $id): string
+    {
+        $token = Security::generateRandomString(64);
+        $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        
+        $this->update($id, [
+            'password_reset_token' => $token,
+            'password_reset_expires' => $expires
+        ]);
+        
+        return $token;
+    }
+
+    /**
+     * Valida token de reset de senha
+     * 
+     * @param string $token
+     * @return array|null
+     */
+    public function validatePasswordResetToken(string $token): ?array
+    {
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE password_reset_token = :token 
+                AND password_reset_expires > NOW() 
+                AND deleted_at IS NULL";
+        
+        return $this->database->selectOne($sql, ['token' => $token]);
+    }
+
+    /**
+     * Limpa token de reset de senha
+     * 
+     * @param int $id
+     * @return int
+     */
+    public function clearPasswordResetToken(int $id): int
+    {
+        return $this->update($id, [
+            'password_reset_token' => null,
+            'password_reset_expires' => null
+        ]);
+    }
+
+    /**
+     * Atualiza integração com Google
+     * 
+     * @param int $id
+     * @param array $googleData
+     * @return int
+     */
+    public function updateGoogleIntegration(int $id, array $googleData): int
+    {
+        return $this->update($id, [
+            'google_access_token' => $googleData['access_token'] ?? null,
+            'google_refresh_token' => $googleData['refresh_token'] ?? null,
+            'google_token_expires' => $googleData['expires_at'] ?? null,
+            'google_calendar_id' => $googleData['calendar_id'] ?? null
+        ]);
+    }
+
+    /**
+     * Verifica se usuário tem integração com Google ativa
+     * 
+     * @param int $id
+     * @return bool
+     */
+    public function hasActiveGoogleIntegration(int $id): bool
+    {
+        $user = $this->find($id);
+        
+        if (!$user || !$user['google_access_token']) {
+            return false;
+        }
+        
+        if ($user['google_token_expires']) {
+            return strtotime($user['google_token_expires']) > time();
+        }
+        
+        return true;
     }
 }

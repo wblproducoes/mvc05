@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `levels` (
     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
     `translate` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `dh` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `dh` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     `dh_update` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS `status` (
     `translate` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `color` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'secondary',
     `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `dh` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `dh` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     `dh_update` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
@@ -58,42 +58,57 @@ CREATE TABLE IF NOT EXISTS `status` (
 
 -- --------------------------------------------------------
 
--- Tabela de usuários (atualizada para usar as tabelas de referência)
+-- Tabela de usuários (atualizada para estrutura completa)
 CREATE TABLE IF NOT EXISTS `users` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
-    `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `level_id` int(11) NOT NULL DEFAULT 11,
-    `gender_id` int(11) DEFAULT NULL,
-    `status_id` int(11) NOT NULL DEFAULT 1,
-    `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `alias` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `cpf` varchar(14) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `birth_date` date DEFAULT NULL,
-    `document` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `address` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `city` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `state` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `zip_code` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `remember_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `last_login` datetime DEFAULT NULL,
-    `login_count` int(11) NOT NULL DEFAULT 0,
-    `email_verified_at` datetime DEFAULT NULL,
-    `notes` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `deleted_at` datetime DEFAULT NULL,
+    `gender_id` int(11) DEFAULT NULL,
+    `phone_home` varchar(15) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `phone_mobile` varchar(15) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `phone_message` varchar(15) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `photo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `username` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `google_access_token` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `google_refresh_token` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `google_token_expires` timestamp NULL DEFAULT NULL,
+    `google_calendar_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `message_signature` text COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Assinatura HTML para mensagens',
+    `signature_include_logo` tinyint(1) DEFAULT 0 COMMENT 'Incluir logo na assinatura',
+    `permissions_updated_at` timestamp NULL DEFAULT NULL COMMENT 'Última atualização das permissões individuais',
+    `unique_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `session_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `last_access` timestamp NULL DEFAULT NULL,
+    `password_reset_token` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `password_reset_expires` timestamp NULL DEFAULT NULL,
+    `level_id` int(11) NOT NULL DEFAULT 11,
+    `status_id` int(11) NOT NULL DEFAULT 1,
+    `register_id` int(11) DEFAULT NULL,
+    `dh` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+    `dh_update` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `users_email_unique` (`email`),
+    UNIQUE KEY `users_username_unique` (`username`),
+    UNIQUE KEY `users_unique_code_unique` (`unique_code`),
+    UNIQUE KEY `users_cpf_unique` (`cpf`),
     KEY `idx_users_level` (`level_id`),
     KEY `idx_users_gender` (`gender_id`),
     KEY `idx_users_status` (`status_id`),
-    KEY `idx_users_created_at` (`created_at`),
+    KEY `idx_users_register` (`register_id`),
+    KEY `idx_users_created_at` (`dh`),
     KEY `idx_users_deleted_at` (`deleted_at`),
-    KEY `idx_users_document` (`document`),
+    KEY `idx_users_cpf` (`cpf`),
+    KEY `idx_users_last_access` (`last_access`),
+    KEY `idx_users_password_reset` (`password_reset_token`),
     CONSTRAINT `fk_users_level` FOREIGN KEY (`level_id`) REFERENCES `levels` (`id`) ON UPDATE CASCADE,
     CONSTRAINT `fk_users_gender` FOREIGN KEY (`gender_id`) REFERENCES `genders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT `fk_users_status` FOREIGN KEY (`status_id`) REFERENCES `status` (`id`) ON UPDATE CASCADE
+    CONSTRAINT `fk_users_status` FOREIGN KEY (`status_id`) REFERENCES `status` (`id`) ON UPDATE CASCADE,
+    CONSTRAINT `fk_users_register` FOREIGN KEY (`register_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -239,6 +254,186 @@ ON DUPLICATE KEY UPDATE
     `translate` = VALUES(`translate`),
     `color` = VALUES(`color`),
     `description` = VALUES(`description`);
+
+-- Tipos de Evento de Acesso
+INSERT INTO `event_types` (`id`, `name`, `translate`, `description`) VALUES
+(1, 'login', 'Login', 'Tentativa de login'),
+(2, 'logout', 'Logout', 'Saída do sistema'),
+(3, 'password_reset', 'Reset de Senha', 'Solicitação de reset de senha'),
+(4, 'profile_update', 'Atualização de Perfil', 'Atualização de dados do perfil'),
+(5, 'failed_login', 'Login Falhou', 'Tentativa de login falhou'),
+(6, 'user_created', 'Usuário Criado', 'Novo usuário criado'),
+(7, 'user_updated', 'Usuário Atualizado', 'Dados do usuário atualizados'),
+(8, 'user_deleted', 'Usuário Excluído', 'Usuário excluído do sistema'),
+(9, 'password_changed', 'Senha Alterada', 'Senha do usuário alterada'),
+(10, 'account_locked', 'Conta Bloqueada', 'Conta bloqueada por segurança')
+ON DUPLICATE KEY UPDATE 
+    `name` = VALUES(`name`),
+    `translate` = VALUES(`translate`),
+    `description` = VALUES(`description`);
+
+-- Tipos de Telefone
+INSERT INTO `phone_types` (`name`, `translate`, `sort_order`) VALUES 
+('mobile', 'Celular', 1),
+('home', 'Residencial', 2),
+('work', 'Comercial', 3),
+('message', 'Recado', 4),
+('whatsapp', 'WhatsApp', 5),
+('other', 'Outro', 6)
+ON DUPLICATE KEY UPDATE 
+    `translate` = VALUES(`translate`),
+    `sort_order` = VALUES(`sort_order`);
+
+-- Tipos de "Mora Com" / Parentesco
+INSERT INTO `living_with` (`name`, `translate`, `sort_order`) VALUES 
+('parents', 'Pais', 1),
+('alone', 'Sozinho', 2),
+('spouse', 'Cônjuge', 3),
+('partner', 'Companheiro', 4),
+('friends', 'Amigo(s)', 5),
+('father', 'Pai', 6),
+('mother', 'Mãe', 7),
+('grandfather', 'Avô', 8),
+('grandmother', 'Avó', 9),
+('uncle', 'Tio', 10),
+('aunt', 'Tia', 11),
+('brother', 'Irmão', 12),
+('sister', 'Irmã', 13),
+('children', 'Filho(s)', 14),
+('relative', 'Parente', 15),
+('guardian', 'Tutor', 16),
+('other', 'Outro', 17),
+('stepfather', 'Padrasto', 18),
+('stepmother', 'Madrasta', 19)
+ON DUPLICATE KEY UPDATE 
+    `translate` = VALUES(`translate`),
+    `sort_order` = VALUES(`sort_order`);
+
+-- Estado Civil
+INSERT INTO `marital_status` (`name`, `translate`, `sort_order`) VALUES 
+('single', 'Solteiro(a)', 1),
+('married', 'Casado(a)', 2),
+('common_law', 'Amasiado(a)', 3),
+('separated', 'Separado(a)', 4),
+('legally_separated', 'Desquitado(a)', 5),
+('divorced', 'Divorciado(a)', 6),
+('widowed', 'Viúvo(a)', 7),
+('stable_union', 'União Estável', 8)
+ON DUPLICATE KEY UPDATE 
+    `translate` = VALUES(`translate`),
+    `sort_order` = VALUES(`sort_order`);
+
+-- --------------------------------------------------------
+
+-- Tabela de Tipos de Evento de Acesso
+CREATE TABLE IF NOT EXISTS `event_types` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `translate` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `dh` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `dh_update` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_event_types_name` (`name`),
+    KEY `idx_event_types_deleted` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+-- Tabela de Tipos de Telefone
+CREATE TABLE IF NOT EXISTS `phone_types` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `translate` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `sort_order` int(11) DEFAULT 0,
+    `ativo` tinyint(1) DEFAULT 1,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_phone_types_ativo` (`ativo`),
+    KEY `idx_phone_types_deleted` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+-- Tabela de "Mora Com" / Tipos de Parentesco
+CREATE TABLE IF NOT EXISTS `living_with` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `translate` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `sort_order` int(11) DEFAULT 0,
+    `ativo` tinyint(1) DEFAULT 1,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_living_with_ativo` (`ativo`),
+    KEY `idx_living_with_deleted` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+-- Tabela de Estado Civil
+CREATE TABLE IF NOT EXISTS `marital_status` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `translate` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `sort_order` int(11) DEFAULT 0,
+    `ativo` tinyint(1) DEFAULT 1,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_marital_status_ativo` (`ativo`),
+    KEY `idx_marital_status_deleted` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+-- Tabela de Endereços (genérica)
+CREATE TABLE IF NOT EXISTS `addresses` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `entity_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'user, student, guardian, etc',
+    `entity_id` int(11) NOT NULL,
+    `cep` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `logradouro` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `numero` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `complemento` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `bairro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `cidade` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `uf` char(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `is_primary` tinyint(1) DEFAULT 1,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_addresses_cep` (`cep`),
+    KEY `idx_addresses_cidade` (`cidade`),
+    KEY `idx_addresses_entity` (`entity_type`, `entity_id`),
+    KEY `idx_addresses_deleted` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+-- Tabela de Telefones (genérica)
+CREATE TABLE IF NOT EXISTS `phones` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `entity_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'user, student, guardian, etc',
+    `entity_id` int(11) NOT NULL,
+    `phone_type_id` int(11) DEFAULT NULL,
+    `numero` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `obs` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `is_primary` tinyint(1) DEFAULT 0,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_phones_entity` (`entity_type`, `entity_id`),
+    KEY `idx_phones_deleted` (`deleted_at`),
+    CONSTRAINT `fk_phones_type` FOREIGN KEY (`phone_type_id`) REFERENCES `phone_types` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT INTO `settings` (`key`, `value`, `type`, `description`, `group`, `is_public`) VALUES
 ('app_name', 'Sistema Administrativo MVC', 'string', 'Nome da aplicação', 'general', 1),
 ('app_version', '1.0.0', 'string', 'Versão da aplicação', 'general', 1),

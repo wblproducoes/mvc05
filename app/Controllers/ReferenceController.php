@@ -7,6 +7,10 @@ use Core\Auth;
 use App\Models\Gender;
 use App\Models\Level;
 use App\Models\Status;
+use App\Models\EventType;
+use App\Models\PhoneType;
+use App\Models\LivingWith;
+use App\Models\MaritalStatus;
 
 /**
  * Controller para gerenciamento de tabelas de referência
@@ -33,11 +37,19 @@ class ReferenceController extends Controller
         $genderModel = new Gender();
         $levelModel = new Level();
         $statusModel = new Status();
+        $eventTypeModel = new EventType();
+        $phoneTypeModel = new PhoneType();
+        $livingWithModel = new LivingWith();
+        $maritalStatusModel = new MaritalStatus();
 
         $data = [
             'genders' => $genderModel->getActive(),
             'levels' => $levelModel->getActive(),
-            'statuses' => $statusModel->getActive()
+            'statuses' => $statusModel->getActive(),
+            'event_types' => $eventTypeModel->getActive(),
+            'phone_types' => $phoneTypeModel->getActive(),
+            'living_with' => $livingWithModel->getActive(),
+            'marital_statuses' => $maritalStatusModel->getActive()
         ];
 
         $this->render('reference/index.twig', $data);

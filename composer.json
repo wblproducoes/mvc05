@@ -1,7 +1,7 @@
 {
     "name": "admin-system/mvc",
     "description": "Sistema administrativo completo em PHP com arquitetura MVC",
-    "version": "1.0.0",
+    "version": "1.3.2",
     "type": "project",
     "require": {
         "php": ">=8.4",

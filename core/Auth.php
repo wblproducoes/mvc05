@@ -26,15 +26,20 @@ class Auth
     /**
      * Realiza login do usuário
      * 
-     * @param string $email
+     * @param string $emailOrUsername
      * @param string $password
      * @param bool $remember
      * @return bool
      */
-    public static function attempt(string $email, string $password, bool $remember = false): bool
+    public static function attempt(string $emailOrUsername, string $password, bool $remember = false): bool
     {
         $userModel = new User();
-        $user = $userModel->findByEmail($email);
+        
+        // Tentar buscar por email ou username
+        $user = $userModel->findByEmail($emailOrUsername);
+        if (!$user) {
+            $user = $userModel->findByUsername($emailOrUsername);
+        }
 
         if (!$user || !Security::verifyPassword($password, $user['password'])) {
             return false;
@@ -48,11 +53,8 @@ class Auth
         // Fazer login
         self::login($user, $remember);
 
-        // Atualizar último login
-        $userModel->update($user['id'], [
-            'last_login' => date('Y-m-d H:i:s'),
-            'login_count' => ($user['login_count'] ?? 0) + 1
-        ]);
+        // Atualizar último acesso
+        $userModel->updateLastAccess($user['id']);
 
         return true;
     }
@@ -175,9 +177,9 @@ class Auth
         $token = Security::generateRandomString(64);
         $hashedToken = hash('sha256', $token);
 
-        // Salvar token no banco
+        // Salvar token no banco (usando session_token)
         $userModel = new User();
-        $userModel->update($userId, ['remember_token' => $hashedToken]);
+        $userModel->update($userId, ['session_token' => $hashedToken]);
 
         // Definir cookie (30 dias)
         $expiry = time() + (30 * 24 * 60 * 60);
@@ -195,7 +197,7 @@ class Auth
         $hashedToken = hash('sha256', $token);
         
         $userModel = new User();
-        $user = $userModel->whereFirst(['remember_token' => $hashedToken, 'deleted_at' => null]);
+        $user = $userModel->whereFirst(['session_token' => $hashedToken, 'deleted_at' => null]);
 
         if (!$user || $user['status_id'] != 1) {
             self::clearRememberToken();
@@ -224,10 +226,10 @@ class Auth
 
             // Remover do banco
             $userModel = new User();
-            $user = $userModel->whereFirst(['remember_token' => $hashedToken]);
+            $user = $userModel->whereFirst(['session_token' => $hashedToken]);
             
             if ($user) {
-                $userModel->update($user['id'], ['remember_token' => null]);
+                $userModel->update($user['id'], ['session_token' => null]);
             }
 
             // Remover cookie
@@ -327,8 +329,8 @@ class Auth
     {
         $userModel = new User();
         
-        // Remover remember token
-        $userModel->update($userId, ['remember_token' => null]);
+        // Remover session token
+        $userModel->update($userId, ['session_token' => null]);
         
         // Se for o usuário atual, fazer logout
         if (self::id() === $userId) {

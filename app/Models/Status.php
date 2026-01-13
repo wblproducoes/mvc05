@@ -118,6 +118,21 @@ class Status extends Model
     }
 
     /**
+     * Obtém status para usuários
+     * 
+     * @return array
+     */
+    public function getForUsers(): array
+    {
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE name IN ('active', 'inactive', 'blocked', 'suspended') 
+                AND deleted_at IS NULL 
+                ORDER BY id";
+        
+        return $this->database->select($sql);
+    }
+
+    /**
      * Verifica se status é ativo
      * 
      * @param int $statusId
@@ -174,21 +189,6 @@ class Status extends Model
     {
         $status = $this->findByName($name);
         return $status ? $status['id'] : null;
-    }
-
-    /**
-     * Obtém status para usuários
-     * 
-     * @return array
-     */
-    public function getForUsers(): array
-    {
-        $sql = "SELECT * FROM {$this->table} 
-                WHERE name IN ('active', 'inactive', 'blocked', 'suspended') 
-                AND deleted_at IS NULL 
-                ORDER BY id";
-        
-        return $this->database->select($sql);
     }
 
     /**
