@@ -1,0 +1,9 @@
+/vendor/
+.env
+*.log
+/cache/*
+!cache/.gitkeep
+.DS_Store
+Thumbs.db
+.ftpquota
+.pdf
