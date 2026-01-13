@@ -25,6 +25,11 @@ class Database
     private array $config;
 
     /**
+     * @var string Prefixo das tabelas
+     */
+    private string $tablePrefix;
+
+    /**
      * Construtor da classe Database
      */
     public function __construct()
@@ -36,6 +41,11 @@ class Database
             'password' => $_ENV['DB_PASS'] ?? '',
             'charset' => $_ENV['DB_CHARSET'] ?? 'utf8mb4'
         ];
+
+        // Inicializa o prefixo e normaliza
+        $prefix = $_ENV['DB_TABLE_PREFIX'] ?? '';
+        $this->tablePrefix = TablePrefix::normalize($prefix);
+        TablePrefix::set($this->tablePrefix);
     }
 
     /**
@@ -218,6 +228,9 @@ class Database
 
         $sql = file_get_contents($filePath);
         
+        // Processa o SQL com prefixos
+        $sql = $this->processSqlWithPrefix($sql);
+        
         try {
             $this->getConnection()->exec($sql);
             return true;
@@ -225,5 +238,59 @@ class Database
             error_log("Erro ao executar arquivo SQL: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Obtém o prefixo das tabelas
+     * 
+     * @return string
+     */
+    public function getTablePrefix(): string
+    {
+        return $this->tablePrefix;
+    }
+
+    /**
+     * Define o prefixo das tabelas
+     * 
+     * @param string $prefix
+     * @return void
+     */
+    public function setTablePrefix(string $prefix): void
+    {
+        $this->tablePrefix = $prefix;
+    }
+
+    /**
+     * Adiciona o prefixo ao nome da tabela
+     * 
+     * @param string $tableName
+     * @return string
+     */
+    public function prefixTable(string $tableName): string
+    {
+        return TablePrefix::add($tableName);
+    }
+
+    /**
+     * Remove o prefixo do nome da tabela
+     * 
+     * @param string $tableName
+     * @return string
+     */
+    public function unprefixTable(string $tableName): string
+    {
+        return TablePrefix::remove($tableName);
+    }
+
+    /**
+     * Processa SQL substituindo placeholders de prefixo
+     * 
+     * @param string $sql
+     * @return string
+     */
+    public function processSqlWithPrefix(string $sql): string
+    {
+        return TablePrefix::processSql($sql);
     }
 }

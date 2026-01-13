@@ -23,14 +23,25 @@ class InstallController extends Controller
      */
     public function index(): void
     {
-        // Verificar se já está instalado
-        if (file_exists(ROOT_PATH . '/.installed')) {
+        // Verificar se o sistema precisa ser instalado
+        $needsInstall = $this->needsInstallation();
+        
+        // Se não precisa instalar e já está marcado como instalado, redireciona
+        if (!$needsInstall && file_exists(ROOT_PATH . '/.installed')) {
+            $this->redirect('/');
+        }
+
+        // Se não precisa instalar mas não tem o arquivo .installed, cria
+        if (!$needsInstall) {
+            file_put_contents(ROOT_PATH . '/.installed', date('Y-m-d H:i:s'));
             $this->redirect('/');
         }
 
         $this->render('install/index.twig', [
             'requirements' => $this->checkRequirements(),
-            'database_config' => $this->getDatabaseConfig()
+            'database_config' => $this->getDatabaseConfig(),
+            'needs_install' => $needsInstall,
+            'auto_install' => $needsInstall // Instalação automática se tabelas não existem
         ]);
     }
 
@@ -45,24 +56,34 @@ class InstallController extends Controller
             $this->redirect('/install');
         }
 
-        // Verificar se já está instalado
-        if (file_exists(ROOT_PATH . '/.installed')) {
+        // Verificar se o sistema precisa ser instalado
+        $needsInstall = $this->needsInstallation();
+        
+        // Se não precisa instalar, redireciona
+        if (!$needsInstall) {
             $this->redirect('/');
         }
 
-        // Validar senha de instalação
-        $installPassword = $_ENV['INSTALL_PASSWORD'] ?? 'admin123';
-        if ($this->post('install_password') !== $installPassword) {
-            $this->flash('error', 'Senha de instalação incorreta');
-            $this->redirect('/install');
+        // Se as tabelas não existem, não pede senha (instalação automática)
+        // Se as tabelas existem, pede senha (reinstalação manual)
+        $requirePassword = !$this->isFirstInstall();
+        
+        if ($requirePassword) {
+            // Validar senha de instalação apenas se não for primeira instalação
+            $installPassword = $_ENV['INSTALL_PASSWORD'] ?? 'admin123';
+            if ($this->post('install_password') !== $installPassword) {
+                $this->flash('error', 'Senha de instalação incorreta');
+                $this->redirect('/install');
+            }
         }
 
-        // Validar dados
+        // Validar dados do administrador
         $validation = $this->validate($_POST, [
             'admin_name' => 'required|min:2|max:100',
             'admin_email' => 'required|email',
             'admin_password' => 'required|min:8',
-            'admin_password_confirmation' => 'required|confirmed'
+            'admin_password_confirmation' => 'required|confirmed',
+            'system_name' => 'required|min:2|max:100'
         ]);
 
         if (!$validation['valid']) {
@@ -70,7 +91,9 @@ class InstallController extends Controller
                 'errors' => $validation['errors'],
                 'old' => $_POST,
                 'requirements' => $this->checkRequirements(),
-                'database_config' => $this->getDatabaseConfig()
+                'database_config' => $this->getDatabaseConfig(),
+                'needs_install' => $needsInstall,
+                'auto_install' => $this->isFirstInstall()
             ]);
             return;
         }
@@ -82,7 +105,9 @@ class InstallController extends Controller
                 'errors' => ['admin_password' => $passwordValidation['errors']],
                 'old' => $_POST,
                 'requirements' => $this->checkRequirements(),
-                'database_config' => $this->getDatabaseConfig()
+                'database_config' => $this->getDatabaseConfig(),
+                'needs_install' => $needsInstall,
+                'auto_install' => $this->isFirstInstall()
             ]);
             return;
         }
@@ -96,6 +121,9 @@ class InstallController extends Controller
 
             // Criar banco de dados e tabelas
             $this->createDatabase();
+
+            // Configurar sistema
+            $this->configureSystem();
 
             // Criar usuário administrador
             $this->createAdminUser();
@@ -119,7 +147,9 @@ class InstallController extends Controller
             $this->render('install/index.twig', [
                 'old' => $_POST,
                 'requirements' => $this->checkRequirements(),
-                'database_config' => $this->getDatabaseConfig()
+                'database_config' => $this->getDatabaseConfig(),
+                'needs_install' => $needsInstall,
+                'auto_install' => $this->isFirstInstall()
             ]);
         }
     }
@@ -215,7 +245,7 @@ class InstallController extends Controller
             $sqlFile = ROOT_PATH . '/database/schema.sql';
             
             if (!file_exists($sqlFile)) {
-                $this->createSchemaFile();
+                throw new \Exception('Arquivo de schema não encontrado');
             }
 
             if (!$database->executeSqlFile($sqlFile)) {
@@ -223,7 +253,7 @@ class InstallController extends Controller
             }
 
         } catch (\Exception $e) {
-            throw new \Exception('Erro na conexão com o banco de dados: ' . $e->getMessage());
+            throw new \Exception('Erro na criação do banco de dados: ' . $e->getMessage());
         }
     }
 
@@ -241,14 +271,96 @@ class InstallController extends Controller
             'name' => Security::sanitizeInput($this->post('admin_name')),
             'email' => strtolower(trim($this->post('admin_email'))),
             'password' => $this->post('admin_password'),
-            'role' => 'admin',
-            'active' => true
+            'level_id' => 1, // Master
+            'status_id' => 1, // Ativo
+            'username' => 'admin'
         ];
 
         $userId = $userModel->create($adminData);
         
         if (!$userId) {
             throw new \Exception('Erro ao criar usuário administrador');
+        }
+    }
+
+    /**
+     * Configura o sistema com dados iniciais
+     * 
+     * @return void
+     * @throws \Exception
+     */
+    private function configureSystem(): void
+    {
+        try {
+            $database = new Database();
+            
+            // Configurar nome do sistema
+            $systemName = Security::sanitizeInput($this->post('system_name'));
+            
+            $sql = "UPDATE `{prefix}settings` SET `value` = :system_name WHERE `key` = 'app_name'";
+            $processedSql = $database->processSqlWithPrefix($sql);
+            $database->update($processedSql, ['system_name' => $systemName]);
+            
+        } catch (\Exception $e) {
+            // Se falhar, não é crítico - pode ser configurado depois
+            error_log("Erro ao configurar sistema: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Verifica se o sistema precisa ser instalado
+     * 
+     * @return bool
+     */
+    private function needsInstallation(): bool
+    {
+        try {
+            $database = new Database();
+            
+            // Verifica se a tabela principal (users) existe
+            $tableName = $database->prefixTable('users');
+            
+            if (!$database->tableExists($tableName)) {
+                return true;
+            }
+            
+            // Verifica se há pelo menos um usuário
+            $sql = "SELECT COUNT(*) as count FROM `{$tableName}`";
+            $result = $database->selectOne($sql);
+            
+            return $result['count'] == 0;
+            
+        } catch (\Exception $e) {
+            // Se não conseguir conectar ou verificar, assume que precisa instalar
+            return true;
+        }
+    }
+
+    /**
+     * Verifica se é a primeira instalação (tabelas não existem)
+     * 
+     * @return bool
+     */
+    private function isFirstInstall(): bool
+    {
+        try {
+            $database = new Database();
+            
+            // Lista de tabelas essenciais
+            $essentialTables = ['users', 'levels', 'status', 'genders'];
+            
+            foreach ($essentialTables as $table) {
+                $tableName = $database->prefixTable($table);
+                if (!$database->tableExists($tableName)) {
+                    return true;
+                }
+            }
+            
+            return false;
+            
+        } catch (\Exception $e) {
+            // Se não conseguir verificar, assume primeira instalação
+            return true;
         }
     }
 
@@ -300,6 +412,33 @@ class InstallController extends Controller
     }
 
     /**
+     * Verifica status da instalação via API
+     * 
+     * @return void
+     */
+    public function status(): void
+    {
+        header('Content-Type: application/json');
+        
+        try {
+            $installMiddleware = new \Core\InstallationMiddleware();
+            $status = $installMiddleware->getInstallationStatus();
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $status
+            ]);
+            
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Tenta tornar diretório gravável
      * 
      * @param string $path
@@ -312,82 +451,5 @@ class InstallController extends Controller
         }
         
         return chmod($path, 0755);
-    }
-
-    /**
-     * Cria arquivo de schema SQL
-     * 
-     * @return void
-     */
-    private function createSchemaFile(): void
-    {
-        $schemaDir = ROOT_PATH . '/database';
-        
-        if (!is_dir($schemaDir)) {
-            mkdir($schemaDir, 0755, true);
-        }
-
-        $sql = $this->getSchemaSql();
-        file_put_contents($schemaDir . '/schema.sql', $sql);
-    }
-
-    /**
-     * Obtém SQL do schema
-     * 
-     * @return string
-     */
-    private function getSchemaSql(): string
-    {
-        return "
--- Tabela de usuários
-CREATE TABLE IF NOT EXISTS `users` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `name` varchar(100) NOT NULL,
-    `email` varchar(100) NOT NULL UNIQUE,
-    `password` varchar(255) NOT NULL,
-    `role` enum('admin','user') NOT NULL DEFAULT 'user',
-    `active` tinyint(1) NOT NULL DEFAULT 1,
-    `avatar` varchar(255) DEFAULT NULL,
-    `phone` varchar(20) DEFAULT NULL,
-    `remember_token` varchar(255) DEFAULT NULL,
-    `last_login` datetime DEFAULT NULL,
-    `login_count` int(11) NOT NULL DEFAULT 0,
-    `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    KEY `idx_email` (`email`),
-    KEY `idx_role` (`role`),
-    KEY `idx_active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabela de logs de atividades (opcional)
-CREATE TABLE IF NOT EXISTS `activity_logs` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `user_id` int(11) DEFAULT NULL,
-    `action` varchar(100) NOT NULL,
-    `description` text DEFAULT NULL,
-    `ip_address` varchar(45) DEFAULT NULL,
-    `user_agent` text DEFAULT NULL,
-    `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    KEY `idx_user_id` (`user_id`),
-    KEY `idx_action` (`action`),
-    KEY `idx_created_at` (`created_at`),
-    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabela de configurações do sistema (opcional)
-CREATE TABLE IF NOT EXISTS `settings` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `key` varchar(100) NOT NULL UNIQUE,
-    `value` text DEFAULT NULL,
-    `type` enum('string','integer','boolean','json') NOT NULL DEFAULT 'string',
-    `description` text DEFAULT NULL,
-    `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    KEY `idx_key` (`key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-";
     }
 }

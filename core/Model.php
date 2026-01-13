@@ -47,6 +47,11 @@ abstract class Model
     public function __construct()
     {
         $this->database = new Database();
+        
+        // Aplica o prefixo ao nome da tabela se definido
+        if (isset($this->table)) {
+            $this->table = $this->database->prefixTable($this->table);
+        }
     }
 
     /**
@@ -294,5 +299,36 @@ abstract class Model
         }
         
         return $data;
+    }
+
+    /**
+     * Obtém o nome da tabela com prefixo
+     * 
+     * @return string
+     */
+    public function getTable(): string
+    {
+        return $this->table;
+    }
+
+    /**
+     * Obtém o nome da tabela sem prefixo
+     * 
+     * @return string
+     */
+    public function getTableWithoutPrefix(): string
+    {
+        return $this->database->unprefixTable($this->table);
+    }
+
+    /**
+     * Define o nome da tabela (será automaticamente prefixada)
+     * 
+     * @param string $tableName
+     * @return void
+     */
+    public function setTable(string $tableName): void
+    {
+        $this->table = $this->database->prefixTable($tableName);
     }
 }

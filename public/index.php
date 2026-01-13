@@ -4,7 +4,7 @@
  * Entry point da aplicação
  * 
  * @author Sistema Administrativo
- * @version 1.0.0
+ * @version 1.4.2
  */
 
 // Definir constantes do sistema
@@ -24,7 +24,7 @@ if (file_exists(ROOT_PATH . '/.env')) {
 }
 
 // Configurar timezone
-date_default_timezone_set('America/Sao_Paulo');
+date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'America/Sao_Paulo');
 
 // Configurar exibição de erros baseado no ambiente
 if ($_ENV['APP_DEBUG'] ?? false) {
@@ -38,10 +38,41 @@ if ($_ENV['APP_DEBUG'] ?? false) {
 // Iniciar sessão
 session_start();
 
-// Verificar se o sistema está instalado
-if (!file_exists(ROOT_PATH . '/.installed') && !str_contains($_SERVER['REQUEST_URI'], '/install')) {
-    header('Location: /install');
-    exit;
+// Aplicar middleware de segurança
+try {
+    $securityMiddleware = new Core\SecurityMiddleware();
+    $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    
+    if (!$securityMiddleware->handle($currentPath, $method)) {
+        // Middleware bloqueou a requisição
+        exit;
+    }
+} catch (Exception $e) {
+    error_log("Erro no middleware de segurança: " . $e->getMessage());
+    
+    // Em caso de erro no middleware, continua mas loga o problema
+    if ($_ENV['APP_DEBUG'] ?? false) {
+        echo "Erro de segurança: " . $e->getMessage();
+        exit;
+    }
+}
+
+// Verificar se o sistema precisa ser instalado
+try {
+    $installMiddleware = new Core\InstallationMiddleware();
+    $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    
+    if ($installMiddleware->handle($currentPath)) {
+        header('Location: ' . $installMiddleware->getInstallUrl());
+        exit;
+    }
+} catch (Exception $e) {
+    // Se houver erro na verificação, redireciona para instalação
+    if (!str_contains($_SERVER['REQUEST_URI'], '/install')) {
+        header('Location: /install');
+        exit;
+    }
 }
 
 try {
